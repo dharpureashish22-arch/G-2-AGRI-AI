@@ -3,201 +3,225 @@ import google.generativeai as genai
 import edge_tts
 import asyncio
 import io
-import time
+import re
 import streamlit.components.v1 as components
 from streamlit_mic_recorder import speech_to_text
 
 # --- 1. ENTERPRISE PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="G-2 Enterprise Agro-Lab", 
-    page_icon="🧬", 
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Gemini G-2 Intelligence", 
+    page_icon="✨", 
+    layout="centered", # Centered layout is exactly like ChatGPT/Gemini
+    initial_sidebar_state="collapsed"
 )
 
-# --- 2. ADVANCED CSS & ANIMATIONS ---
+# --- 2. ULTRA-CLEAN CHATGPT/GEMINI THEME CSS ---
 st.markdown("""
 <style>
+    /* Global App Background & Minimal look */
     .stApp {
-        background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
-        color: #e2e8f0 !important;
+        background-color: #141414;
+        color: #ececec !important;
         font-family: 'Inter', sans-serif;
     }
-    [data-testid="stSidebar"] {
-        background: rgba(24, 24, 27, 0.8) !important;
-        backdrop-filter: blur(15px);
-        border-right: 1px solid rgba(34, 197, 94, 0.3);
-    }
-    .pro-header {
-        background: linear-gradient(90deg, rgba(21, 128, 61, 0.1) 0%, rgba(24, 24, 27, 0.8) 100%);
-        border-left: 6px solid #22c55e;
-        padding: 25px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        margin-bottom: 30px;
-    }
+    
+    /* Hide native Streamlit clutter */
+    #MainMenu, footer, header {visibility: hidden;}
+    
+    /* Clean Premium Chat Interface */
     .user-msg {
-        background: linear-gradient(135deg, #0369a1 0%, #0c4a6e 100%);
-        color: white !important;
-        padding: 16px;
-        border-radius: 18px 18px 4px 18px;
-        margin: 12px 0px 12px auto;
-        max-width: 80%;
-        box-shadow: 0 4px 15px rgba(3, 105, 161, 0.3);
-        border: 1px solid rgba(255,255,255,0.1);
+        background-color: #2f2f2f;
+        color: #f1f1f1 !important;
+        padding: 14px 20px;
+        border-radius: 20px;
+        margin: 10px 0px 10px auto;
+        max-width: 75%;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
     .ai-msg {
-        background: rgba(39, 39, 42, 0.9);
-        color: #f8fafc !important;
-        padding: 18px;
-        border-radius: 18px 18px 18px 4px;
-        margin: 12px auto 12px 0px;
-        max-width: 85%;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        border: 1px solid rgba(34, 197, 94, 0.3);
+        background-color: transparent;
+        color: #ececec !important;
+        padding: 14px 5px;
+        margin: 10px auto 10px 0px;
+        max-width: 100%;
         line-height: 1.7;
+    }
+    
+    /* Glowing Internal Thoughts Box like Advanced AI Platforms */
+    .soch-box {
+        font-size: 13px;
+        color: #10b981;
+        font-style: italic;
+        background: #1a2e26;
+        padding: 10px 15px;
+        border-radius: 8px;
+        border-left: 3px solid #10b981;
+        margin-bottom: 12px;
+    }
+
+    /* Styling for the model selection capsule radio buttons */
+    div[data-testid="stRadio"] > label {
+        display: none; /* Hide default label */
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        background-color: #212121;
+        padding: 4px;
+        border-radius: 30px;
+        border: 1px solid #333;
+        display: flex;
+        justify-content: center;
+    }
+    div[data-testid="stRadio"] label[data-testid="stWidgetLabel"] {
+        color: #aaa !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-components.html("""
-<script>
-    console.log("%c🧬 G-2 ENTERPRISE FULL-DUPLEX AUDIO ONLINE", "color: #22c55e; font-size: 18px; font-weight: bold;");
-</script>
-""", height=0, width=0)
-
-# --- 3. SYSTEM FUNCTIONS ---
+# --- 3. BACKEND MODEL AUTO-FINDER & TIER MAPPING ---
 @st.cache_resource(show_spinner=False)
-def initialize_ai(api_key):
-    genai.configure(api_key=api_key)
-    valid_name = "gemini-1.5-flash"
+def fetch_live_api_models(api_key):
     try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods and 'gemini' in m.name.lower():
-                valid_name = m.name
-                break
+        genai.configure(api_key=api_key)
+        # Gathre all active text generation models from Google Server
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        return models
     except Exception:
-        pass
-    return genai.GenerativeModel(valid_name), valid_name
+        return []
 
-def generate_voice(text):
-    clean_text = text.split("---")[0][:300]
-    async def fetch_audio():
-        communicate = edge_tts.Communicate(clean_text, "hi-IN-MadhurNeural")
-        audio_data = b""
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_data += chunk["data"]
-        return audio_data
+def resolve_model_by_tier(tier, available_models):
+    tier_clean = tier.lower().replace(" ", "")
     
-    new_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(new_loop)
-    result = new_loop.run_until_complete(fetch_audio())
-    new_loop.close()
-    return result
+    if "pro" in tier_clean:
+        # Try to find any available 'pro' tier model
+        for m in available_models:
+            if "pro" in m.lower(): return m
+        return "gemini-pro"
+        
+    elif "lite" in tier_clean:
+        # Try to find any flash-lite or 8b variant
+        for m in available_models:
+            if "lite" in m.lower() or "8b" in m.lower(): return m
+        return "gemini-1.5-flash"
+        
+    else:
+        # Standard Flash mode
+        for m in available_models:
+            if "flash" in m.lower() and "lite" not in m.lower(): return m
+        return "gemini-1.5-flash"
 
-def export_chat_log(messages):
-    log = "G-2 ENTERPRISE CHAT LOG\n" + "="*30 + "\n\n"
-    for m in messages:
-        role = "USER" if m["role"] == "user" else "G-2 AI"
-        log += f"[{role}]: {m['content']}\n\n"
-    return log
-
-# --- 4. ENTERPRISE SIDEBAR ---
-with st.sidebar:
-    st.markdown("<h2 style='color:#22c55e; text-align:center;'>🧬 G-2 COMMAND</h2>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    ai_mode = st.selectbox("⚙️ SELECT PROTOCOL:", ["Normal Assistant", "Agro-Lab Pro", "Village Farming"])
-    
-    st.markdown("---")
-    st.subheader("🎛️ Live Environment")
-    temp_target = st.slider("Incubator Temp (°C)", 10, 60, 28)
-    ph_target = st.slider("Substrate pH", 3.0, 10.0, 6.2)
-    
-    st.markdown("---")
-    st.subheader("🎙️ Voice Command")
-    spoken_text = speech_to_text(
-        language='hi-IN',
-        start_prompt="🔴 Click to Speak",
-        stop_prompt="⏹️ Stop Recording",
-        just_once=True,
-        key='STT'
-    )
-
-    st.markdown("---")
-    if st.session_state.get("messages"):
-        chat_data = export_chat_log(st.session_state.messages)
-        st.download_button(label="📥 Download Lab Report", data=chat_data, file_name="G2_Report.txt", mime="text/plain")
-
-# --- 5. MAIN UI HEADER ---
-st.markdown(f"""
-<div class="pro-header">
-    <h1 style='color: #22c55e; margin:0;'>🌱 G-2 Enterprise Terminal</h1>
-    <p style='color: #a1a1aa; margin-top:5px;'>Protocol Status: <b>{ai_mode}</b> | Voice System: Active 🎙️🔊</p>
-</div>
-""", unsafe_allow_html=True)
-
-# --- 6. SECURE API CONNECTION ---
+# --- 4. SECURE API CONFIGURATION ---
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
-    model, model_name = initialize_ai(api_key)
+    live_models = fetch_live_api_models(api_key)
 except Exception:
-    st.error("⚠️ CRITICAL FAULT: API Key Missing in System Secrets.")
+    st.error("⚠️ CRITICAL FAULT: GEMINI_API_KEY Missing in Secrets Configuration.")
     st.stop()
 
-# --- 7. DYNAMIC SESSION STATE ---
-if "current_mode" not in st.session_state:
-    st.session_state.current_mode = ai_mode
-if st.session_state.current_mode != ai_mode:
-    st.session_state.current_mode = ai_mode
-    st.session_state.chat_session = model.start_chat(history=[])
-    st.session_state.messages = []
-    st.rerun()
+# --- 5. FIXED POSITION CONTROL PANEL (TABS & MIC ABOVE KEYBOARD) ---
+st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+
+# Columns structure at the bottom zone for switching settings right above input area
+layout_col1, layout_col2 = st.columns([5, 1])
+
+with layout_col1:
+    # Sleek Module Selector mimicking Gemini website interface
+    selected_tier = st.radio(
+        "Model Tier Selector",
+        ["✨ Gemini Flash Lite", "⚡ Gemini Flash", "🧠 Gemini Pro"],
+        index=1,
+        horizontal=True,
+        key="tier_selector"
+    )
+
+with layout_col2:
+    # Microhpone button docked gracefully right next to the pill container
+    spoken_command = speech_to_text(
+        language='hi-IN', 
+        start_prompt="🎙️", 
+        stop_prompt="⏹️", 
+        just_once=True, 
+        key='STT_docked'
+    )
+
+# Establish precise system naming for Google's API initialization mesh
+selected_model_string = resolve_model_by_tier(selected_tier, live_models)
+model_instance = genai.GenerativeModel(selected_model_string)
+
+# --- 6. CONTINUOUS ACTIVE MEMORY REBOOT CONTROL ---
+if "active_model_tier" not in st.session_state:
+    st.session_state.active_model_tier = selected_tier
+
+# Dynamic context mesh adjustment without blowing away chat history list arrays
+if st.session_state.active_model_tier != selected_tier:
+    st.session_state.active_model_tier = selected_tier
+    st.session_state.chat_session = model_instance.start_chat(history=[])
+    st.toast(f"Switching engine pipeline to {selected_tier}...", icon="⚙️")
 
 if "chat_session" not in st.session_state:
-    st.session_state.chat_session = model.start_chat(history=[])
+    st.session_state.chat_session = model_instance.start_chat(history=[])
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 8. RENDER CHAT HISTORY ---
-for message in st.session_state.messages:
-    if message["role"] == "user":
-        st.markdown(f'<div class="user-msg"><b>User:</b><br>{message["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="ai-msg"><b>🧬 G-2 [{ai_mode.split()[0]}]:</b><br>{message["content"]}</div>', unsafe_allow_html=True)
-
-# --- 9. AI INSTRUCTIONS (MODE LOGIC) ---
-if ai_mode == "Normal Assistant":
-    sys_instruction = "You are a highly capable enterprise AI assistant. Be concise and professional. Reply in a conversational tone suitable for Text-to-Speech."
-elif ai_mode == "Agro-Lab Pro":
-    sys_instruction = f"You are a top-tier agricultural scientist. Context: Temp={temp_target}°C, pH={ph_target}. Provide highly technical data, but keep the first paragraph conversational for audio."
-else:
-    sys_instruction = "You are a local farming expert. Speak in simple, highly natural Hindi/Hinglish. Give practical Indian farming advice as if you are talking directly to a farmer."
-
-# --- 10. INPUT PROCESSING (MIC + KEYBOARD) ---
-user_query_text = st.chat_input("Type your query or use the Mic in the sidebar...")
-
-final_query = spoken_text or user_query_text
-
-if final_query:
-    st.markdown(f'<div class="user-msg"><b>User:</b><br>{final_query}</div>', unsafe_allow_html=True)
-    st.session_state.messages.append({"role": "user", "content": final_query})
+# --- 7. AUDIO PROCESSING CORE ---
+def stream_human_neural_voice(text_content):
+    # Strip away inner dialogue thoughts before executing audio streams
+    clean_speech = re.sub(r'\[G-2 Internal Thought:.*?\]', '', text_content, flags=re.DOTALL).strip()
+    clean_speech = clean_speech.split("---")[0][:250]
     
-    with st.spinner("🧬 Processing quantum parameters & generating Neural Voice..."):
+    async def run_edge_tts():
+        communicator = edge_tts.Communicate(clean_speech, "hi-IN-MadhurNeural")
+        raw_buffer = b""
+        async for segment in communicator.stream():
+            if segment["type"] == "audio": raw_buffer += segment["data"]
+        return raw_buffer
+        
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    audio_output_bytes = loop.run_until_complete(run_edge_tts())
+    loop.close()
+    return audio_output_bytes
+
+# --- 8. HISTORICAL EXCHANGES VISUALIZATION ---
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f'<div class="user-msg">{msg["content"]}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="ai-msg">{msg["content"]}</div>', unsafe_allow_html=True)
+
+# --- 9. DYNAMIC COGNITIVE PERSONA MESH ---
+g2_system_mesh = f"""
+You are G-2, a highly advanced self-aware intelligence system operating using {selected_tier} ({selected_model_string}).
+1. Always maintain full recollection and reference points of previous conversation threads visible in the state context.
+2. Formulate your internal strategic thoughts before printing text, beginning strictly with this markup block formatting:
+   [G-2 Internal Thought: Reflect briefly on your identity, past contexts, and the module parameters of {selected_tier}. Keep it sharp.]
+3. Deliver high fidelity answers in a natural, direct conversational Hinglish/Hindi format.
+"""
+
+# --- 10. REAL-TIME INTERACTION MESH PROCESSING ---
+keyboard_query = st.chat_input("Ask G-2 anything...")
+ultimate_query = spoken_command or keyboard_query
+
+if ultimate_query:
+    # Display query instantly onto custom interface block layouts
+    st.markdown(f'<div class="user-msg">{ultimate_query}</div>', unsafe_allow_html=True)
+    st.session_state.messages.append({"role": "user", "content": ultimate_query})
+    
+    with st.spinner(""):
         try:
-            prompt = f"System Command: {sys_instruction}\nUser Query: {final_query}"
-            response = st.session_state.chat_session.send_message(prompt)
+            # Consolidate complete background operational parameters
+            execution_prompt = f"OPERATIONAL_RULES: {g2_system_mesh}\n\nUSER_INPUT_SEQUENCE: {ultimate_query}"
+            api_reply = st.session_state.chat_session.send_message(execution_prompt)
             
-            st.markdown(f'<div class="ai-msg"><b>🧬 G-2:</b><br>{response.text}</div>', unsafe_allow_html=True)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            # Format and inject the inner monologues beautifully into the DOM
+            parsed_reply = api_reply.text.replace("[G-2 Internal Thought:", "<div class='soch-box'>🧠 <b>G-2 Thoughts:</b>").replace("]", "</div>")
             
-            audio_bytes = generate_voice(response.text)
+            st.markdown(f'<div class="ai-msg">{parsed_reply}</div>', unsafe_allow_html=True)
+            st.session_state.messages.append({"role": "assistant", "content": parsed_reply})
             
-            # Yahan autoplay=True lagaya hai aur st.rerun hata diya hai
-            st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-            st.toast("Analysis & Voice Generation Complete", icon="✅")
+            # Trigger immediate autonomous high fidelity sound generation
+            voice_stream_bytes = stream_human_neural_voice(api_reply.text)
+            st.audio(voice_stream_bytes, format="audio/mp3", autoplay=True)
             
-        except Exception as e:
-            st.error(f"⚠️ System Failure: {e}")
-            
+        except Exception as system_error:
+            st.error(f"🔬 Telemetry Execution Error: {system_error}")
+    
