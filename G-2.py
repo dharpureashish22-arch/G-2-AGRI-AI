@@ -15,7 +15,7 @@ st.markdown("""
     .main-title { font-size: 42px !important; font-weight: 700 !important; color: #1E88E5; }
     .stAlert { border-radius: 10px; }
 </style>
-""", unsafe_allowed_html=True)
+""", unsafe_allow_html=True)
 
 # --- 2. SIDEBAR NAVIGATION & SETTINGS ---
 with st.sidebar:
@@ -37,7 +37,7 @@ with st.sidebar:
     st.info("💡 Pro Tip: Custom molecules design karne ke liye exact inputs ka use karein.")
 
 # --- 3. MAIN INTERFACE ---
-st.markdown("<h1 class='main-title'>🌱 G-2: Autonomous Agro-Lab AI</h1>", unsafe_allowed_html=True)
+st.markdown("<h1 class='main-title'>🌱 G-2: Autonomous Agro-Lab AI</h1>", unsafe_allow_html=True)
 st.write("Welcome to the advanced synthesis interface. G-2 is equipped with autonomous knowledge retrieval to engineer bio-solutions in real-time.")
 
 # Quick Stats Row
@@ -60,7 +60,6 @@ except Exception:
     st.stop()
 
 # --- 5. MODEL INITIALIZATION ---
-# Using the standard stable model with search capability enabled
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     tools="google_search"
@@ -97,7 +96,6 @@ if user_query:
     with st.chat_message("assistant"):
         with st.spinner("🔬 G-2 Molecular Engine is processing context & search web..."):
             try:
-                # Engineering systemic guidelines into prompt based on sidebar selections
                 enriched_prompt = f"""
                 User Lab Condition context: Temperature={temp_target}°C, Soil pH={ph_target}.
                 User Query: {user_query}
@@ -111,4 +109,3 @@ if user_query:
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
                 st.error(f"⚠️ Execution Error: {e}")
-                
