@@ -131,9 +131,21 @@ try:
 except Exception:
     st.error("⚠️ API Key missing! Check your Streamlit Secrets.")
     st.stop()
+# --- 6. MODEL INITIALIZATION (SMART FINDER) ---
+# 2026 ke latest stable models (3.5-flash ya 2.5-flash) ko fallback banaya hai
+valid_model_name = "gemini-3.5-flash" 
 
-# Auto-finder block ko simple rakh ke direct flash chala rahe hai jo bina errors ke direct chalega
-model = genai.GenerativeModel("gemini-1.5-flash")
+try:
+    for m in genai.list_models():
+        # Yeh check karega ki api key par konsa model abhi zinda hai
+        if 'generateContent' in m.supported_generation_methods and 'gemini' in m.name.lower():
+            valid_model_name = m.name
+            break
+except Exception:
+    pass
+
+# Ab error nahi aayega kyunki yeh direct Google se valid naam uthayega
+model = genai.GenerativeModel(valid_model_name)
 
 # --- 7. CONVERSATION STATE & MEMORY REBOOT ON MODE CHANGE ---
 # Agar user mode badle, toh chat history purani refresh ho jaye taaki AI confuse na ho
