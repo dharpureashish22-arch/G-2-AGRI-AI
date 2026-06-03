@@ -16,7 +16,7 @@ except Exception:
 # --- 2. AI Model setup (Web Browser ke sath) ---
 # Yahan 'tools="google_search_retrieval"' wali line se AI ko internet ka access mil gaya
 model = genai.GenerativeModel(
-    model_name="gemini-3.1-flash lite",
+    model_name="gemini-1.5 flash",
     tools="google_search_retrieval" 
 )
 
