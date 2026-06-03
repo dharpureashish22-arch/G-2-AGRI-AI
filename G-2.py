@@ -5,6 +5,7 @@ import asyncio
 import io
 import time
 import streamlit.components.v1 as components
+from streamlit_mic_recorder import speech_to_text
 
 # --- 1. ENTERPRISE PAGE CONFIGURATION ---
 st.set_page_config(
@@ -61,7 +62,7 @@ st.markdown("""
 
 components.html("""
 <script>
-    console.log("%c🧬 G-2 ENTERPRISE NEURAL VOICE ONLINE", "color: #22c55e; font-size: 18px; font-weight: bold;");
+    console.log("%c🧬 G-2 ENTERPRISE FULL-DUPLEX AUDIO ONLINE", "color: #22c55e; font-size: 18px; font-weight: bold;");
 </script>
 """, height=0, width=0)
 
@@ -79,14 +80,9 @@ def initialize_ai(api_key):
         pass
     return genai.GenerativeModel(valid_name), valid_name
 
-# 🧠 YAHAN NAYA NEURAL VOICE ENGINE DALA HAI
 def generate_voice(text):
-    # Text ko thoda chhota karte hain taaki process fast ho
     clean_text = text.split("---")[0][:300]
-    
     async def fetch_audio():
-        # "hi-IN-MadhurNeural" ekdum natural male Indian awaaz hai
-        # Agar female awaaz chahiye toh "hi-IN-SwaraNeural" kar sakte ho
         communicate = edge_tts.Communicate(clean_text, "hi-IN-MadhurNeural")
         audio_data = b""
         async for chunk in communicate.stream():
@@ -94,12 +90,10 @@ def generate_voice(text):
                 audio_data += chunk["data"]
         return audio_data
     
-    # Streamlit ke threads mein safe run karne ke liye naya event loop
     new_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
     result = new_loop.run_until_complete(fetch_audio())
     new_loop.close()
-    
     return result
 
 def export_chat_log(messages):
@@ -121,9 +115,15 @@ with st.sidebar:
     temp_target = st.slider("Incubator Temp (°C)", 10, 60, 28)
     ph_target = st.slider("Substrate pH", 3.0, 10.0, 6.2)
     
-    st.caption("Live Sensor Telemetry")
-    chart_data = [temp_target + (i * 0.5) for i in range(10)]
-    st.line_chart(chart_data, height=150, color="#22c55e")
+    st.markdown("---")
+    st.subheader("🎙️ Voice Command")
+    spoken_text = speech_to_text(
+        language='hi-IN',
+        start_prompt="🔴 Click to Speak",
+        stop_prompt="⏹️ Stop Recording",
+        just_once=True,
+        key='STT'
+    )
 
     st.markdown("---")
     if st.session_state.get("messages"):
@@ -134,7 +134,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class="pro-header">
     <h1 style='color: #22c55e; margin:0;'>🌱 G-2 Enterprise Terminal</h1>
-    <p style='color: #a1a1aa; margin-top:5px;'>Protocol Status: <b>{ai_mode}</b> | Neural Voice Connected 🔊</p>
+    <p style='color: #a1a1aa; margin-top:5px;'>Protocol Status: <b>{ai_mode}</b> | Voice System: Active 🎙️🔊</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -149,13 +149,10 @@ except Exception:
 # --- 7. DYNAMIC SESSION STATE ---
 if "current_mode" not in st.session_state:
     st.session_state.current_mode = ai_mode
-    st.toast("System Initialized Successfully!", icon="🟢")
-
 if st.session_state.current_mode != ai_mode:
     st.session_state.current_mode = ai_mode
     st.session_state.chat_session = model.start_chat(history=[])
     st.session_state.messages = []
-    st.toast(f"Protocol Switched to {ai_mode}", icon="🔄")
     st.rerun()
 
 if "chat_session" not in st.session_state:
@@ -178,28 +175,28 @@ elif ai_mode == "Agro-Lab Pro":
 else:
     sys_instruction = "You are a local farming expert. Speak in simple, highly natural Hindi/Hinglish. Give practical Indian farming advice as if you are talking directly to a farmer."
 
-# --- 10. INPUT PROCESSING & OUTPUT ---
-user_query = st.chat_input("Enter command or query sequence...")
+# --- 10. INPUT PROCESSING (MIC + KEYBOARD) ---
+user_query_text = st.chat_input("Type your query or use the Mic in the sidebar...")
 
-if user_query:
-    st.markdown(f'<div class="user-msg"><b>User:</b><br>{user_query}</div>', unsafe_allow_html=True)
-    st.session_state.messages.append({"role": "user", "content": user_query})
+final_query = spoken_text or user_query_text
+
+if final_query:
+    st.markdown(f'<div class="user-msg"><b>User:</b><br>{final_query}</div>', unsafe_allow_html=True)
+    st.session_state.messages.append({"role": "user", "content": final_query})
     
     with st.spinner("🧬 Processing quantum parameters & generating Neural Voice..."):
         try:
-            prompt = f"System Command: {sys_instruction}\nUser Query: {user_query}"
+            prompt = f"System Command: {sys_instruction}\nUser Query: {final_query}"
             response = st.session_state.chat_session.send_message(prompt)
             
             st.markdown(f'<div class="ai-msg"><b>🧬 G-2:</b><br>{response.text}</div>', unsafe_allow_html=True)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
-            # Asli Human-like Audio Generate aur Play karna
             audio_bytes = generate_voice(response.text)
-            st.audio(audio_bytes, format="audio/mp3")
             
+            # Yahan autoplay=True lagaya hai aur st.rerun hata diya hai
+            st.audio(audio_bytes, format="audio/mp3", autoplay=True)
             st.toast("Analysis & Voice Generation Complete", icon="✅")
-            time.sleep(0.5)
-            st.rerun()
             
         except Exception as e:
             st.error(f"⚠️ System Failure: {e}")
