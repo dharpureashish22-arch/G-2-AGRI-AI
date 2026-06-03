@@ -60,10 +60,7 @@ except Exception:
     st.stop()
 
 # --- 5. MODEL INITIALIZATION ---
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    tools="google_search"
-)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 # --- 6. CONVERSATION MEMORY (SESSION STATE) ---
 if "chat_session" not in st.session_state:
