@@ -15,7 +15,8 @@ except Exception:
     st.stop()
 
 # --- 3. Model Setup (100% Error-Free Line) ---
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-pro")
+
 
 # --- 4. Chat Memory Setup (Yaadasht) ---
 if "chat_session" not in st.session_state:
