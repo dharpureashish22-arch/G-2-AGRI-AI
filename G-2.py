@@ -4,7 +4,7 @@ from gtts import gTTS
 import io
 import streamlit.components.v1 as components
 
-# --- 1. SET PAGE CONFIG (MUST BE FIRST) ---
+# --- 1. SET PAGE CONFIG ---
 st.set_page_config(
     page_title="G-2 Quantum Agro-Lab", 
     page_icon="🧬", 
@@ -12,24 +12,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. ADVANCED HTML & CSS INJECTION (THEMING) ---
+# --- 2. ADVANCED CSS INJECTION ---
 st.markdown("""
 <style>
-    /* Global App Background & Font */
     .stApp {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: #e2e8f0 !important;
         font-family: 'Inter', sans-serif;
     }
-    
-    /* Sidebar Styling (Glassmorphism) */
     [data-testid="stSidebar"] {
         background: rgba(30, 41, 59, 0.7) !important;
         backdrop-filter: blur(12px);
         border-right: 1px solid rgba(74, 222, 128, 0.2);
     }
-    
-    /* Custom Modern Header */
     .hero-container {
         background: linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0%, rgba(30, 41, 59, 0.5) 100%);
         border-left: 5px solid #22c55e;
@@ -50,8 +45,6 @@ st.markdown("""
         font-size: 16px;
         margin-top: 5px;
     }
-
-    /* Custom Premium Chat Bubbles */
     .user-box {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
         color: white !important;
@@ -73,50 +66,65 @@ st.markdown("""
         border: 1px solid rgba(74, 222, 128, 0.2);
         line-height: 1.6;
     }
-    
-    /* Streamlit native elements overriding */
     .stSlider > label, .stMetric label { color: #4ade80 !important; font-weight: 600; }
     .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { color: #4ade80 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. JAVASCRIPT INJECTION (FOR ANIMATION / UX EFFECTS) ---
-# Yeh JS browser mein run hoga aur page load hote hi console mein ek sleek green notification trigger karega
+# --- 3. JAVASCRIPT ---
 components.html("""
 <script>
-    console.log("%c🌱 G-2 QUANTUM ENGINE ACTIVATED SUCCESSFULLY", "color: #4ade80; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px rgba(74,222,128,0.5);");
-    // App ke load hote hi ek halki si click window feedback alert browser tab par set karega
-    parent.document.title = "🧬 G-2: Quantum Agro-Lab AI";
+    console.log("%c🌱 G-2 MULTI-MODE ENGINE ACTIVATED", "color: #4ade80; font-size: 20px; font-weight: bold;");
+    parent.document.title = "🧬 G-2: Multi-Mode AI";
 </script>
 """, height=0, width=0)
 
-# --- 4. SIDEBAR PANEL ---
+# --- 4. SIDEBAR PANEL (WITH MODE SELECTION) ---
 with st.sidebar:
     st.markdown("<h2 style='color:#4ade80; text-align:center;'>🔬 G-2 CORE PANEL</h2>", unsafe_allow_html=True)
-    st.markdown("<div style='text-align:center;'><img src='https://img.icons8.com/fluent/100/000000/biotech.png' width='80'></div>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#94a3b8;'>Quantum Synthesis Mode Active</p>", unsafe_allow_html=True)
+    
+    # SVG Logo Code Embedded Directly
+    st.markdown("""
+    <div style='text-align:center;'>
+        <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50,90 C50,90 20,60 20,30 C20,10 50,10 50,10 C50,10 80,10 80,30 C80,60 50,90 50,90 Z" fill="none" stroke="#4ade80" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="50" cy="40" r="5" fill="#4ade80" />
+            <path d="M50,45 L50,85" stroke="#4ade80" stroke-width="3" stroke-linecap="round"/>
+            <path d="M50,60 L32,42" stroke="#4ade80" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="32" cy="42" r="3" fill="#4ade80" />
+            <path d="M50,70 L68,52" stroke="#4ade80" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="68" cy="52" r="3" fill="#4ade80" />
+        </svg>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<p style='text-align:center; color:#94a3b8;'>Select System Configuration</p>", unsafe_allow_html=True)
     st.markdown("---")
     
-    # Advanced Metrics with neon styling
-    st.subheader("📊 Neural Diagnostics")
-    st.metric(label="System Response", value="Ultra-Fast", delta="99.4% Acc")
+    # --- YAHAN MODE SELECTBOX DALA HAI ---
+    ai_mode = st.selectbox(
+        "⚙️ CHOOSE AI MODE:",
+        ["Normal Mode", "Basic Farming Mode", "Agro-Lab Mode"]
+    )
     
     st.markdown("---")
-    st.subheader("⚙️ Live Simulation Matrix")
+    st.subheader("📊 Mode Status")
+    st.metric(label="Active Neural Grid", value=ai_mode.split()[0], delta="Ready")
+    
+    st.markdown("---")
+    st.subheader("🎛️ Simulation Tweaks")
     temp_target = st.slider("Incubator Temp (°C)", 10, 60, 28)
     ph_target = st.slider("Substrate pH", 3.0, 10.0, 6.2)
-    st.markdown("---")
-    st.caption("Developed for high-end biochemical research workflows.")
 
-# --- 5. MAIN CUSTOM HERO INTERFACE (HTML) ---
-st.markdown("""
+# --- 5. MAIN HERO INTERFACE ---
+st.markdown(f"""
 <div class="hero-container">
-    <h1 class="hero-title">🌱 G-2: Quantum Agro-Lab AI</h1>
-    <div class="hero-subtitle">Advanced Autonomous Synthesis Engine Engine — Enabled with HTML5, CSS3, & JavaScript Core</div>
+    <h1 class="hero-title">🌱 G-2: Multi-Mode AI</h1>
+    <div class="hero-subtitle">Currently Operating in <b>{ai_mode}</b> — Powered by Gemini-Flash Core</div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- 6. API KEY & SMART ENGINE AUTO-FINDER ---
+# --- 6. API KEY & MODEL INITIALIZATION ---
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
@@ -124,63 +132,70 @@ except Exception:
     st.error("⚠️ API Key missing! Check your Streamlit Secrets.")
     st.stop()
 
-valid_model_name = "gemini-1.5-flash"
-try:
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods and 'gemini' in m.name.lower():
-            valid_model_name = m.name
-            break
-except Exception:
-    pass
+# Auto-finder block ko simple rakh ke direct flash chala rahe hai jo bina errors ke direct chalega
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-model = genai.GenerativeModel(valid_model_name)
+# --- 7. CONVERSATION STATE & MEMORY REBOOT ON MODE CHANGE ---
+# Agar user mode badle, toh chat history purani refresh ho jaye taaki AI confuse na ho
+if "current_mode" not in st.session_state:
+    st.session_state.current_mode = ai_mode
 
-# --- 7. CONVERSATION STATE & YAADASHT ---
+if st.session_state.current_mode != ai_mode:
+    st.session_state.current_mode = ai_mode
+    st.session_state.chat_session = model.start_chat(history=[])
+    st.session_state.messages = []
+    st.rerun()
+
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = model.start_chat(history=[])
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Rendering past chat history using our Custom Premium HTML Boxes
+# Past Chat History Render
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(f'<div class="user-box"><b>You:</b><br>{message["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="ai-box"><b>🧬 G-2 Engine:</b><br>{message["content"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="ai-box"><b>🧬 G-2 [{ai_mode.split()[0]}]:</b><br>{message["content"]}</div>', unsafe_allow_html=True)
 
-# --- 8. VOICE GENERATOR ENGINE (gTTS) ---
+# --- 8. VOICE GENERATOR ENGINE ---
 def generate_voice(text):
-    # Shorten text a bit for seamless audio rendering
     clean_text = text.split("---")[0]  
-    tts = gTTS(text=clean_text[:300], lang='hi') 
+    tts = gTTS(text=clean_text[:250], lang='hi') 
     audio_bytes = io.BytesIO()
     tts.write_to_fp(audio_bytes)
     return audio_bytes
 
-# --- 9. INPUT & REAL-TIME PROCESSING ---
-user_query = st.chat_input("Ask G-2 about seed genetics, molecular formulas...")
+# --- 9. MODE BEHAVIOR CONFIGURATOR (PROMPT INJECTION) ---
+# Mode ke hisaab se system instructions banti hain
+if ai_mode == "Normal Mode":
+    system_instruction = "You are a helpful, friendly general assistant. Answer the question normally and casually."
+elif ai_mode == "Basic Farming Mode":
+    system_instruction = "You are a simple village agricultural advisor. Explain concepts in very simple, easy-to-understand Hinglish/Hindi. Focus on local farming practices, crops, seasons, and simple solutions for Indian farmers. Avoid heavy scientific words."
+elif ai_mode == "Agro-Lab Mode":
+    system_instruction = f"You are an expert Agro-Chemical scientist in a high-tech quantum laboratory. Provide highly technical, deep scientific answers, including chemical formulas, molecular docking data, gene names, and strict lab procedures. Current simulated context: Temp={temp_target}°C, pH={ph_target}."
+
+# --- 10. INPUT & PROCESSING ---
+user_query = st.chat_input(f"Type your query for {ai_mode}...")
 
 if user_query:
-    # Render user query immediately in custom HTML bubble
     st.markdown(f'<div class="user-box"><b>You:</b><br>{user_query}</div>', unsafe_allow_html=True)
     st.session_state.messages.append({"role": "user", "content": user_query})
     
-    with st.spinner("🔬 G-2 Neural Grid is analyzing data points..."):
+    with st.spinner(f"🔬 G-2 [{ai_mode.split()[0]}] Engine processing..."):
         try:
-            enriched_prompt = f"Provide a concise conversational scientific summary. Lab Parameters: Temp={temp_target}°C, pH={ph_target}. User Query: {user_query}"
-            response = st.session_state.chat_session.send_message(enriched_prompt)
+            # System instruction ko user query ke sath merge karke bhejna
+            master_prompt = f"{system_instruction}\n\nUser Question: {user_query}"
+            response = st.session_state.chat_session.send_message(master_prompt)
             
-            # Render AI reply in gorgeous custom layout container
             st.markdown(f'<div class="ai-box"><b>🧬 G-2 Engine:</b><br>{response.text}</div>', unsafe_allow_html=True)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
-            # Generate and embed audio controller
             audio_file = generate_voice(response.text)
             st.audio(audio_file, format="audio/mp3")
             
-            # Small page refresh trick to ensure layout settles nicely
             st.rerun()
             
         except Exception as e:
-            st.error(f"⚠️ Simulation Error: {e}")
+            st.error(f"⚠️ Grid Error: {e}")
             
