@@ -31,7 +31,12 @@ def load_knowledge():
 lab_data = load_knowledge()
 
 # --- 3. Conversation Memory (Yaadasht) ---
-model = genai.GenerativeModel("gemini-1.5-pro")
+# Ab G-2 ke paas live internet ka access hai
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-pro",
+    tools="google_search_retrieval"
+)
+
 
 # Agar chat history nahi hai, toh nayi memory banayega
 if "chat_session" not in st.session_state:
