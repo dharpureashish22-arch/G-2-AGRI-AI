@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
-from gtts import gTTS
+import edge_tts
+import asyncio
 import io
 import time
 import streamlit.components.v1 as components
@@ -60,11 +61,11 @@ st.markdown("""
 
 components.html("""
 <script>
-    console.log("%c🧬 G-2 ENTERPRISE SYSTEM ONLINE", "color: #22c55e; font-size: 18px; font-weight: bold;");
+    console.log("%c🧬 G-2 ENTERPRISE NEURAL VOICE ONLINE", "color: #22c55e; font-size: 18px; font-weight: bold;");
 </script>
 """, height=0, width=0)
 
-# --- 3. SYSTEM FUNCTIONS (CACHED FOR SPEED) ---
+# --- 3. SYSTEM FUNCTIONS ---
 @st.cache_resource(show_spinner=False)
 def initialize_ai(api_key):
     genai.configure(api_key=api_key)
@@ -78,12 +79,28 @@ def initialize_ai(api_key):
         pass
     return genai.GenerativeModel(valid_name), valid_name
 
+# 🧠 YAHAN NAYA NEURAL VOICE ENGINE DALA HAI
 def generate_voice(text):
-    clean_text = text.split("---")[0][:250]
-    tts = gTTS(text=clean_text, lang='hi') 
-    audio_bytes = io.BytesIO()
-    tts.write_to_fp(audio_bytes)
-    return audio_bytes
+    # Text ko thoda chhota karte hain taaki process fast ho
+    clean_text = text.split("---")[0][:300]
+    
+    async def fetch_audio():
+        # "hi-IN-MadhurNeural" ekdum natural male Indian awaaz hai
+        # Agar female awaaz chahiye toh "hi-IN-SwaraNeural" kar sakte ho
+        communicate = edge_tts.Communicate(clean_text, "hi-IN-MadhurNeural")
+        audio_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+        return audio_data
+    
+    # Streamlit ke threads mein safe run karne ke liye naya event loop
+    new_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(new_loop)
+    result = new_loop.run_until_complete(fetch_audio())
+    new_loop.close()
+    
+    return result
 
 def export_chat_log(messages):
     log = "G-2 ENTERPRISE CHAT LOG\n" + "="*30 + "\n\n"
@@ -104,13 +121,11 @@ with st.sidebar:
     temp_target = st.slider("Incubator Temp (°C)", 10, 60, 28)
     ph_target = st.slider("Substrate pH", 3.0, 10.0, 6.2)
     
-    # Fake Live Telemetry Chart (Professional UI touch)
     st.caption("Live Sensor Telemetry")
     chart_data = [temp_target + (i * 0.5) for i in range(10)]
     st.line_chart(chart_data, height=150, color="#22c55e")
 
     st.markdown("---")
-    # Export Chat Feature
     if st.session_state.get("messages"):
         chat_data = export_chat_log(st.session_state.messages)
         st.download_button(label="📥 Download Lab Report", data=chat_data, file_name="G2_Report.txt", mime="text/plain")
@@ -119,7 +134,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class="pro-header">
     <h1 style='color: #22c55e; margin:0;'>🌱 G-2 Enterprise Terminal</h1>
-    <p style='color: #a1a1aa; margin-top:5px;'>Protocol Status: <b>{ai_mode}</b> | Encrypted Connection</p>
+    <p style='color: #a1a1aa; margin-top:5px;'>Protocol Status: <b>{ai_mode}</b> | Neural Voice Connected 🔊</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -157,11 +172,11 @@ for message in st.session_state.messages:
 
 # --- 9. AI INSTRUCTIONS (MODE LOGIC) ---
 if ai_mode == "Normal Assistant":
-    sys_instruction = "You are a highly capable enterprise AI assistant. Be concise and professional."
+    sys_instruction = "You are a highly capable enterprise AI assistant. Be concise and professional. Reply in a conversational tone suitable for Text-to-Speech."
 elif ai_mode == "Agro-Lab Pro":
-    sys_instruction = f"You are a top-tier agricultural scientist. Use deep scientific terms, molecular data, and professional formatting. Context: Temp={temp_target}°C, pH={ph_target}."
+    sys_instruction = f"You are a top-tier agricultural scientist. Context: Temp={temp_target}°C, pH={ph_target}. Provide highly technical data, but keep the first paragraph conversational for audio."
 else:
-    sys_instruction = "You are a local farming expert. Speak in simple Hindi/Hinglish. Give practical, low-cost Indian farming advice."
+    sys_instruction = "You are a local farming expert. Speak in simple, highly natural Hindi/Hinglish. Give practical Indian farming advice as if you are talking directly to a farmer."
 
 # --- 10. INPUT PROCESSING & OUTPUT ---
 user_query = st.chat_input("Enter command or query sequence...")
@@ -170,7 +185,7 @@ if user_query:
     st.markdown(f'<div class="user-msg"><b>User:</b><br>{user_query}</div>', unsafe_allow_html=True)
     st.session_state.messages.append({"role": "user", "content": user_query})
     
-    with st.spinner("🧬 Processing quantum parameters..."):
+    with st.spinner("🧬 Processing quantum parameters & generating Neural Voice..."):
         try:
             prompt = f"System Command: {sys_instruction}\nUser Query: {user_query}"
             response = st.session_state.chat_session.send_message(prompt)
@@ -178,15 +193,14 @@ if user_query:
             st.markdown(f'<div class="ai-msg"><b>🧬 G-2:</b><br>{response.text}</div>', unsafe_allow_html=True)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
-            # Generate Audio
-            audio_file = generate_voice(response.text)
-            st.audio(audio_file, format="audio/mp3")
+            # Asli Human-like Audio Generate aur Play karna
+            audio_bytes = generate_voice(response.text)
+            st.audio(audio_bytes, format="audio/mp3")
             
-            st.toast("Analysis Complete", icon="✅")
+            st.toast("Analysis & Voice Generation Complete", icon="✅")
             time.sleep(0.5)
             st.rerun()
             
         except Exception as e:
             st.error(f"⚠️ System Failure: {e}")
-            
             
