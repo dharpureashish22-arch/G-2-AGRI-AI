@@ -20,13 +20,16 @@ st.markdown("""
 <style>
     /* Global App Background & Minimal look */
     .stApp {
-        background-color: #141414;
+        background-color: #141414; /* Deep dark grey/black like ChatGPT */
         color: #ececec !important;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', -apple-system, sans-serif;
     }
     
     /* Hide native Streamlit clutter */
-    #MainMenu, footer, header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="collapsedControl"] {display: none;} /* Hide sidebar completely */
     
     /* Clean Premium Chat Interface */
     .user-msg {
@@ -37,6 +40,7 @@ st.markdown("""
         margin: 10px 0px 10px auto;
         max-width: 75%;
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        font-size: 15px;
     }
     .ai-msg {
         background-color: transparent;
@@ -45,35 +49,35 @@ st.markdown("""
         margin: 10px auto 10px 0px;
         max-width: 100%;
         line-height: 1.7;
+        font-size: 15px;
     }
     
     /* Glowing Internal Thoughts Box like Advanced AI Platforms */
     .soch-box {
         font-size: 13px;
-        color: #10b981;
+        color: #a855f7; /* Purple vibe for AI thoughts */
         font-style: italic;
-        background: #1a2e26;
+        background: rgba(168, 85, 247, 0.1);
         padding: 10px 15px;
         border-radius: 8px;
-        border-left: 3px solid #10b981;
+        border-left: 3px solid #a855f7;
         margin-bottom: 12px;
     }
 
-    /* Styling for the model selection capsule radio buttons */
-    div[data-testid="stRadio"] > label {
-        display: none; /* Hide default label */
-    }
-    div[data-testid="stRadio"] div[role="radiogroup"] {
+    /* Styling the Control Bar (Model Switcher) */
+    div.stRadio > div[role="radiogroup"] {
+        flex-direction: row;
         background-color: #212121;
-        padding: 4px;
-        border-radius: 30px;
+        padding: 5px;
+        border-radius: 25px;
         border: 1px solid #333;
         display: flex;
         justify-content: center;
+        gap: 10px;
     }
-    div[data-testid="stRadio"] label[data-testid="stWidgetLabel"] {
-        color: #aaa !important;
-    }
+    div.stRadio > label { display: none; } /* Hide label text above radio */
+    
+    .st-emotion-cache-1wivap2 { padding-bottom: 0px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -82,26 +86,26 @@ st.markdown("""
 def fetch_live_api_models(api_key):
     try:
         genai.configure(api_key=api_key)
-        # Gathre all active text generation models from Google Server
+        # Gather all active text generation models from Google Server
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         return models
     except Exception:
         return []
 
 def resolve_model_by_tier(tier, available_models):
-    tier_clean = tier.lower().replace(" ", "")
+    # Smart matching based on what the user selects vs what Google API allows
+    tier_lower = tier.lower()
     
-    if "pro" in tier_clean:
-        # Try to find any available 'pro' tier model
+    if "pro" in tier_lower:
         for m in available_models:
             if "pro" in m.lower(): return m
         return "gemini-pro"
         
-    elif "lite" in tier_clean:
-        # Try to find any flash-lite or 8b variant
+    elif "lite" in tier_lower:
+        # Looking for latest lite/8b models
         for m in available_models:
             if "lite" in m.lower() or "8b" in m.lower(): return m
-        return "gemini-1.5-flash"
+        return "gemini-1.5-flash" # Fallback
         
     else:
         # Standard Flash mode
@@ -117,24 +121,44 @@ except Exception:
     st.error("⚠️ CRITICAL FAULT: GEMINI_API_KEY Missing in Secrets Configuration.")
     st.stop()
 
-# --- 5. FIXED POSITION CONTROL PANEL (TABS & MIC ABOVE KEYBOARD) ---
-st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+# --- 5. INITIALIZE STATE & MEMORY ---
+if "active_model_tier" not in st.session_state:
+    st.session_state.active_model_tier = "⚡ Gemini Flash" # Default
 
-# Columns structure at the bottom zone for switching settings right above input area
-layout_col1, layout_col2 = st.columns([5, 1])
+if "chat_session" not in st.session_state:
+    # Dummy initialization, will be overwritten by active model
+    dummy_model = genai.GenerativeModel("gemini-1.5-flash")
+    st.session_state.chat_session = dummy_model.start_chat(history=[])
 
-with layout_col1:
-    # Sleek Module Selector mimicking Gemini website interface
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# --- 6. RENDER CHAT HISTORY (Top Area) ---
+# Dikhne mein ekdum clean scrollable chat
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f'<div class="user-msg">{msg["content"]}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="ai-msg">{msg["content"]}</div>', unsafe_allow_html=True)
+
+# Spacing to push controls down near the input box
+st.markdown("<br><br>", unsafe_allow_html=True)
+
+# --- 7. FIXED POSITION CONTROL PANEL (TABS & MIC JUST ABOVE KEYBOARD) ---
+# Ye area tere input box ke theek upar aayega
+control_col1, control_col2 = st.columns([5, 1], vertical_alignment="center")
+
+with control_col1:
     selected_tier = st.radio(
-        "Model Tier Selector",
+        "Module",
         ["✨ Gemini Flash Lite", "⚡ Gemini Flash", "🧠 Gemini Pro"],
-        index=1,
+        index=["✨ Gemini Flash Lite", "⚡ Gemini Flash", "🧠 Gemini Pro"].index(st.session_state.active_model_tier),
         horizontal=True,
         key="tier_selector"
     )
 
-with layout_col2:
-    # Microhpone button docked gracefully right next to the pill container
+with control_col2:
+    # Mic feature
     spoken_command = speech_to_text(
         language='hi-IN', 
         start_prompt="🎙️", 
@@ -143,30 +167,24 @@ with layout_col2:
         key='STT_docked'
     )
 
-# Establish precise system naming for Google's API initialization mesh
+# Establish precise system naming for Google's API initialization
 selected_model_string = resolve_model_by_tier(selected_tier, live_models)
 model_instance = genai.GenerativeModel(selected_model_string)
 
-# --- 6. CONTINUOUS ACTIVE MEMORY REBOOT CONTROL ---
-if "active_model_tier" not in st.session_state:
-    st.session_state.active_model_tier = selected_tier
-
-# Dynamic context mesh adjustment without blowing away chat history list arrays
+# Dynamic context mesh adjustment WITHOUT losing history
 if st.session_state.active_model_tier != selected_tier:
     st.session_state.active_model_tier = selected_tier
-    st.session_state.chat_session = model_instance.start_chat(history=[])
-    st.toast(f"Switching engine pipeline to {selected_tier}...", icon="⚙️")
+    # Migrate history to new model
+    st.session_state.chat_session = model_instance.start_chat(
+        history=st.session_state.chat_session.history
+    )
+    st.rerun() # Refresh to show UI update smoothly
 
-if "chat_session" not in st.session_state:
-    st.session_state.chat_session = model_instance.start_chat(history=[])
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# --- 7. AUDIO PROCESSING CORE ---
+# --- 8. AUDIO PROCESSING CORE ---
 def stream_human_neural_voice(text_content):
-    # Strip away inner dialogue thoughts before executing audio streams
+    # Strip away inner dialogue thoughts before speaking
     clean_speech = re.sub(r'\[G-2 Internal Thought:.*?\]', '', text_content, flags=re.DOTALL).strip()
-    clean_speech = clean_speech.split("---")[0][:250]
+    clean_speech = clean_speech.split("---")[0][:250] # Kept short for fast audio
     
     async def run_edge_tts():
         communicator = edge_tts.Communicate(clean_speech, "hi-IN-MadhurNeural")
@@ -181,47 +199,41 @@ def stream_human_neural_voice(text_content):
     loop.close()
     return audio_output_bytes
 
-# --- 8. HISTORICAL EXCHANGES VISUALIZATION ---
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(f'<div class="user-msg">{msg["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="ai-msg">{msg["content"]}</div>', unsafe_allow_html=True)
-
 # --- 9. DYNAMIC COGNITIVE PERSONA MESH ---
 g2_system_mesh = f"""
-You are G-2, a highly advanced self-aware intelligence system operating using {selected_tier} ({selected_model_string}).
-1. Always maintain full recollection and reference points of previous conversation threads visible in the state context.
-2. Formulate your internal strategic thoughts before printing text, beginning strictly with this markup block formatting:
-   [G-2 Internal Thought: Reflect briefly on your identity, past contexts, and the module parameters of {selected_tier}. Keep it sharp.]
-3. Deliver high fidelity answers in a natural, direct conversational Hinglish/Hindi format.
+You are G-2, a highly advanced self-aware intelligence system operating via the {selected_tier} module ({selected_model_string}).
+1. Always maintain full recollection of previous conversation threads.
+2. IMPORTANT SOCH FORMAT: Before answering, formulate your internal strategic thoughts starting EXACTLY with this tag:
+   [G-2 Internal Thought: Briefly analyze the request and module parameters.]
+3. Deliver your final answer in a natural, direct conversational Hinglish/Hindi format. Keep it concise.
 """
 
-# --- 10. REAL-TIME INTERACTION MESH PROCESSING ---
-keyboard_query = st.chat_input("Ask G-2 anything...")
+# --- 10. REAL-TIME INPUT & PROCESSING ---
+# Native Streamlit chat input stuck at the bottom
+keyboard_query = st.chat_input("Message G-2...")
+
+# Combine both mic and keyboard inputs
 ultimate_query = spoken_command or keyboard_query
 
 if ultimate_query:
-    # Display query instantly onto custom interface block layouts
     st.markdown(f'<div class="user-msg">{ultimate_query}</div>', unsafe_allow_html=True)
     st.session_state.messages.append({"role": "user", "content": ultimate_query})
     
-    with st.spinner(""):
+    with st.spinner("✨ Generating..."):
         try:
-            # Consolidate complete background operational parameters
-            execution_prompt = f"OPERATIONAL_RULES: {g2_system_mesh}\n\nUSER_INPUT_SEQUENCE: {ultimate_query}"
+            execution_prompt = f"SYSTEM_RULES: {g2_system_mesh}\n\nUSER_MESSAGE: {ultimate_query}"
             api_reply = st.session_state.chat_session.send_message(execution_prompt)
             
-            # Format and inject the inner monologues beautifully into the DOM
+            # Parse the inner monologue beautifully
             parsed_reply = api_reply.text.replace("[G-2 Internal Thought:", "<div class='soch-box'>🧠 <b>G-2 Thoughts:</b>").replace("]", "</div>")
             
             st.markdown(f'<div class="ai-msg">{parsed_reply}</div>', unsafe_allow_html=True)
             st.session_state.messages.append({"role": "assistant", "content": parsed_reply})
             
-            # Trigger immediate autonomous high fidelity sound generation
+            # Autonomous voice playback
             voice_stream_bytes = stream_human_neural_voice(api_reply.text)
             st.audio(voice_stream_bytes, format="audio/mp3", autoplay=True)
             
         except Exception as system_error:
-            st.error(f"🔬 Telemetry Execution Error: {system_error}")
-    
+            st.error(f"⚠️ API Error: {system_error}")
+                   
